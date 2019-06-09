@@ -1,5 +1,6 @@
 import os
 import PIL.Image as Image
+import PIL.ImageFilter as ImageFilter
 import numpy as np
 import scipy.stats as st
 import matplotlib.pyplot as plt
@@ -109,10 +110,10 @@ class Background:
         self.overlap_threshold = 0.1
         self.num_faces = 0
         self.name = get_filename(path)
-        self.kernal_weights = (2., 2.5)
         
         
-    def place_face(self, face_path, blur=False):
+        
+    def place_face(self, face_path, blur=False, kernal_weights = (2., 2.5), ):
         face_img = Image.open(face_path)
         self.face_ids.append(get_filename(face_path))
         
@@ -126,15 +127,28 @@ class Background:
         
         self.face_boxes.append(bbox)
         face_img = face_img.resize(bbox.size)
-        mask = gkern(face_img.size[1], face_img.size[0], *self.kernal_weights)
+        mask = gkern(face_img.size[1], face_img.size[0], *kernal_weights)
+#         mask = mask*mask
         mask = mask/np.max(mask)
         th = (np.mean(mask) - 1*np.std(mask)) 
-        mask[mask<th] = 0
+        mask[mask<th] = np.nan
+#         mask[mask<th] = 0
         if not blur:
             mask[mask>=th] = 255
         else:
-            mask = mask*255
+#             th2 = (np.mean(mask) - 0.5*np.std(mask)) 
+#             mask[mask<th2] = np.log(mask[mask<th2])
+            mask = np.log(mask)
+            mask_min = np.nanmin(mask)
+#             mask = 1.45**(mask - mask_min)
+            mask = (mask - mask_min)
+#             mask[mask< (np.log(th) - mask_min)] = 0
+            mask = mask/np.nanmax(mask)
+            mask = mask*768
+            mask[mask>255] = 255
+            
         mask_img = Image.fromarray(np.uint8(mask))
+        mask_img = mask_img.filter(ImageFilter.MaxFilter(3))
         back_img.paste(face_img, (bbox.xmin, bbox.ymin), mask_img)
         self.num_faces += 1
         
@@ -156,5 +170,3 @@ class Background:
     def save(self, out_dir='output'):
         self.image.save('./'+ out_dir + '/' + str(self.num_faces) + '_' + self.name)
         
-    def set_kernal_weights(self, new_weights):
-        self.kernal_weights = new_weights
