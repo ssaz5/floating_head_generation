@@ -110,6 +110,7 @@ class Background:
         self.overlap_threshold = 0.1
         self.num_faces = 0
         self.name = get_filename(path)
+        self.std_step = 1
         
         
         
@@ -130,7 +131,7 @@ class Background:
         mask = gkern(face_img.size[1], face_img.size[0], *kernal_weights)
 #         mask = mask*mask
         mask = mask/np.max(mask)
-        th = (np.mean(mask) - 1*np.std(mask)) 
+        th = (np.mean(mask) - self.std_step*np.std(mask)) 
         mask[mask<th] = np.nan
 #         mask[mask<th] = 0
         if not blur:
@@ -145,6 +146,7 @@ class Background:
 #             mask[mask< (np.log(th) - mask_min)] = 0
             mask = mask/np.nanmax(mask)
             mask = mask*768
+            mask = np.nan_to_num(mask)
             mask[mask>255] = 255
             
         mask_img = Image.fromarray(np.uint8(mask))
