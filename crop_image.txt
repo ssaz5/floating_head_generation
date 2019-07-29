@@ -1,0 +1,8 @@
+https://github.com/leblancfg/autocrop
+
+pip install autocrop
+
+
+
+for i in *;do autocrop -i $i -o $i/cropped -r $i/nofaces --facePercent 90;done # DO NOT RUN!
+

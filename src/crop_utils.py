@@ -25,30 +25,30 @@ def distance_from_center(center, extremas, depth=3):
 def is_face_good(direction, slope):
     return (np.sum(np.abs(direction)+np.abs(slope)) < 0.3) and (np.abs(direction) < 0.175 ) and (np.abs(slope) < 0.20 )
 
-def get_box(center, extremas):
+def get_box(center, extremas, box_mult=1):
     box = []
     left, right, tot, direction, slope = distance_from_center(center[0,:], extremas)
     if is_face_good(direction, slope):
         center_box = np.zeros((2,))
         center_box[1] = int((center[0,:][1] + center[-1,:][1])/2)
         center_box[0] = int((extremas[-1,:][0] + extremas[0,:][0]) / 2)
-        box.append(center_box[0]-0.75*tot)
-        box.append(center_box[1]-1.1*tot)
-        box.append(center_box[0]+0.75*tot)
-        box.append(center_box[1]+1.1*tot)
+        box.append(center_box[0]-0.75*tot*box_mult)
+        box.append(center_box[1]-1.1*tot*box_mult)
+        box.append(center_box[0]+0.75*tot*box_mult)
+        box.append(center_box[1]+1.1*tot*box_mult)
     
     return box
        
 
 
-def crop_face(image_path, out_name):
+def crop_face(image_path, out_name, box_mult=1):
     image = face_recognition.load_image_file(image_path)
     face_landmarks_list = face_recognition.face_landmarks(image)
     if face_landmarks_list:
         chin = np.array(face_landmarks_list[0]['chin'])
         nose_bridge = np.array(face_landmarks_list[0]['nose_bridge'])
 
-        box = np.array(get_box(nose_bridge, chin))
+        box = np.array(get_box(nose_bridge, chin, box_mult))
 #         print(box, image.shape, box.shape)
         
         if len(box) > 0: 
