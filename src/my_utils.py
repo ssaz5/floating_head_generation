@@ -1,6 +1,7 @@
 import os
 import PIL.Image as Image
 import PIL.ImageFilter as ImageFilter
+from PIL import  ImageChops
 import numpy as np
 import scipy.stats as st
 import matplotlib.pyplot as plt
@@ -23,6 +24,24 @@ def get_list_of_files(dirName):
 
     return allFiles
 
+
+
+def trim(im, th1=3, th2=11):
+    data = np.array(im.convert('HSV'))
+#     data = np.array(im_[:,:,1])
+    mask = np.logical_or(data[...,1]>th1,data[...,2] <(255-th2))
+    mask = Image.fromarray(255*mask.astype('uint8'))
+    mask1 = mask.filter(ImageFilter.FIND_EDGES)
+    mask2 = ImageChops.subtract(mask,mask1)
+    mask1 = mask2.filter(ImageFilter.FIND_EDGES)
+    mask2 = ImageChops.subtract(mask2,mask1)
+
+#     mask2=mask
+    
+    
+#     im.putalpha(mask)
+    return mask2
+    
 
 
 
@@ -105,6 +124,10 @@ class Background:
     def __init__(self, path):
         
         self.image = Image.open(path)
+        self.image = self.image.resize((768,768))
+        
+        
+        
         self.face_ids = []
         self.face_boxes = []
         self.overlap_threshold = 0.1
@@ -116,6 +139,7 @@ class Background:
         
     def place_face(self, face_path, blur=False, kernal_weights = (2., 2.5), ):
         face_img = Image.open(face_path)
+        face_img_mask = trim(face_img)
         self.face_ids.append(get_filename(face_path))
         
         back_img = self.image
@@ -128,37 +152,41 @@ class Background:
         
         self.face_boxes.append(bbox)
         face_img = face_img.resize(bbox.size)
-        mask = gkern(face_img.size[1], face_img.size[0], *kernal_weights)
-#         mask = mask*mask
-        mask = mask/np.max(mask)
-        th = (np.mean(mask) - self.std_step*np.std(mask)) 
-        mask[mask<th] = np.nan
-#         mask[mask<th] = 0
-        if not blur:
-            mask[mask>=th] = 255
-        else:
-#             th2 = (np.mean(mask) - 0.5*np.std(mask)) 
-#             mask[mask<th2] = np.log(mask[mask<th2])
-            mask = np.log(mask)
-            mask_min = np.nanmin(mask)
-#             mask = 1.45**(mask - mask_min)
-            mask = (mask - mask_min)
-#             mask[mask< (np.log(th) - mask_min)] = 0
-            mask = mask/np.nanmax(mask)
-            mask = mask*768
-            mask = np.nan_to_num(mask)
-            mask[mask>255] = 255
+        face_img_mask = face_img_mask.resize(bbox.size, Image.ANTIALIAS)
+        
+#         mask = gkern(face_img.size[1], face_img.size[0], *kernal_weights)
+# #         mask = mask*mask
+#         mask = mask/np.max(mask)
+#         th = (np.mean(mask) - self.std_step*np.std(mask)) 
+#         mask[mask<th] = np.nan
+# #         mask[mask<th] = 0
+#         if not blur:
+#             mask[mask>=th] = 255
+#         else:
+# #             th2 = (np.mean(mask) - 0.5*np.std(mask)) 
+# #             mask[mask<th2] = np.log(mask[mask<th2])
+#             mask = np.log(mask)
+#             mask_min = np.nanmin(mask)
+# #             mask = 1.45**(mask - mask_min)
+#             mask = (mask - mask_min)
+# #             mask[mask< (np.log(th) - mask_min)] = 0
+#             mask = mask/np.nanmax(mask)
+#             mask = mask*768
+#             mask = np.nan_to_num(mask)
+#             mask[mask>255] = 255
             
-        mask_img = Image.fromarray(np.uint8(mask))
-        mask_img = mask_img.filter(ImageFilter.MaxFilter(3))
-        back_img.paste(face_img, (bbox.xmin, bbox.ymin), mask_img)
+#         mask_img = Image.fromarray(np.uint8(mask))
+#         mask_img = mask_img.filter(ImageFilter.MaxFilter(3))
+#         mask_img = face_img_mask*mask_img
+#         back_img.paste(face_img, (bbox.xmin, bbox.ymin), mask_img)
+        back_img.paste(face_img, (bbox.xmin, bbox.ymin), face_img_mask)
         self.num_faces += 1
         
 
     def new_bbox(self, face_img):
         back_img = self.image
         scaling_factor = np.min([back_img.size[0] / face_img.size[0], back_img.size[1] / face_img.size[1]])
-        scale =  (np.random.rand(1)*5 + 2) /  scaling_factor 
+        scale =  (np.random.rand(1)*5 +1) /  scaling_factor 
         back_size = back_img.size
         face_size = (face_img.size[0] // scale, face_img.size[1] // scale)
         xmin = int(np.random.rand(1) * (back_img.size[0] - face_size[0]))
